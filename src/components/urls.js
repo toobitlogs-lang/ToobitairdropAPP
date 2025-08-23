@@ -1,3 +1,4 @@
-const BASE_URL = "http://localhost:5000";
+const BASE_URL = "https://toobitairdrop-a-pi.vercel.app";
 
 export default BASE_URL;
+
